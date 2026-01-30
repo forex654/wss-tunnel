@@ -1170,7 +1170,29 @@ func runWebSocketServer(addr string) {
 	if token != "" {
 		upgrader.Subprotocols = []string{token}
 	}
+	
+	// ===== 健康检查：给 Zeabur/Render 等平台探活用 =====
+	// 访问 /health 返回 200 OK
+	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
 
+	// 如果 WebSocket 不在根路径，则让根路径 / 也返回 200 OK（避免平台用 / 探活导致失败）
+	// 注意：如果你的 WebSocket path 本身就是 "/"，那就不要注册 "/"，否则会覆盖 WebSocket upgrade
+	if path != "/" {
+		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			// 只处理根路径，其他路径交给后续 handler（比如 /ws）
+			if r.URL.Path != "/" {
+				http.NotFound(w, r)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("OK"))
+		})
+	}
+	// ===== 健康检查结束 =====
+	
 	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		clientIP, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil {
