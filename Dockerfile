@@ -1,18 +1,24 @@
-
 FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache git
+RUN apk add --no-cache git ca-certificates
 
-RUN go mod init proxy && \
-    go get github.com/google/uuid && \
-    go get github.com/gorilla/websocket
-
+# 创建 go.mod
 COPY main.go .
 
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o proxy main.go
+RUN go mod init proxy
 
+# 下载依赖
+RUN go mod tidy || true
+RUN go get github.com/google/uuid@latest
+RUN go get github.com/gorilla/websocket@latest
+RUN go mod tidy
+
+# 编译
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o proxy main.go
+
+# 运行镜像
 FROM alpine:latest
 
 RUN apk add --no-cache ca-certificates tzdata
