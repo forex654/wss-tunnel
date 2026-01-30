@@ -22,5 +22,5 @@ COPY --from=builder /app/proxy /proxy
 
 EXPOSE 8080
 
-# 使用 shell 形式的 CMD，这样可以解析环境变量
-CMD /proxy -l wss://0.0.0.0:8080/ws -token "${TOKEN}"
+# 启动命令写在这里，自动使用 $PORT 环境变量
+CMD ["sh", "-c", "/proxy -l ws://0.0.0.0:$PORT/ws"]
